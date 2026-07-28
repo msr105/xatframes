@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/eamxat/Images/refs/heads/main/favicon-16x16.png">
+    
+    <title>Leafy Theme Xatframe - EAM96</title>
+    
+    <style>
+        :root {
+            /*
+               Posiciones aproximadas basadas en los recuadros rojos indicados
+               sobre el fondo de la escena. Ajusta estos porcentajes si necesitas
+               afinar la posiciÃ³n exacta de cada elemento.
+            */
+            --sleep-top: 63%;
+            --sleep-left: 36.5%;
+
+            --diadema-top: 47%;
+            --diadema-left: 14%;
+
+            --water-top: calc(58% + 40px); /* Subido 50px verticalmente (90 - 50) */
+            --water-left: calc(58% + 280px); /* Movido 120px mÃ¡s a la derecha (160 + 120) */
+
+            /* Nuevo smile: posiciÃ³n del recuadro rojo indicado */
+            --strawberry-top: 45.5%;
+            --strawberry-left: 48.5%;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+
+        html {
+            /* Fallback para navegadores que no soportan dvh (Safari viejo, WebView Android viejo) */
+            height: 100%;
+            height: -webkit-fill-available;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #72b5f7; /* Color de respaldo */
+            font-family: sans-serif;
+            /* Evita seleccionar texto/imÃ¡genes o hacer zoom accidental con doble tap en iOS/Android */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+            overscroll-behavior: none;
+        }
+
+        .scene {
+            position: relative;
+            width: 100vw;
+            /* Triple fallback de altura para mÃ¡xima compatibilidad:
+               1) 100vh (todos los navegadores)
+               2) calc(var(--vh)*100) (Safari/iOS antiguo con barra de direcciones dinÃ¡mica, vÃ­a JS)
+               3) 100dvh (navegadores modernos con soporte de viewport dinÃ¡mico) */
+            height: 100vh;
+            height: calc(var(--vh, 1vh) * 100);
+            height: 100dvh;
+            /* Respeta zonas seguras en iPhones con notch/Dynamic Island */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            background-image: url('https://xatimg.com/image/AtasfMua8HJC.png');
+            background-size: cover;
+            background-position: center bottom;
+            background-repeat: no-repeat;
+            overflow: hidden;
+        }
+
+        /*
+            Cada elemento (sleep, diadema, blanket) ahora es independiente y
+            estÃ¡ disperso por la escena en lugar de apilado sobre un Ãºnico
+            personaje. Se conserva el tamaÃ±o intrÃ­nseco (nativo) del webp para
+            evitar cualquier escalado, pixelaciÃ³n o compresiÃ³n.
+        */
+        .scene-item {
+            position: absolute;
+            width: auto;
+            height: auto;
+            max-width: none;
+            image-rendering: high-quality;
+            -webkit-user-drag: none;
+            display: block;
+            z-index: 4;
+        }
+
+        .item-sleep {
+            top: var(--sleep-top);
+            left: var(--sleep-left);
+            z-index: 6; /* el personaje dormido queda ligeramente al frente */
+        }
+
+        .item-diadema {
+            top: var(--diadema-top);
+            left: var(--diadema-left);
+        }
+
+        .item-water {
+            top: var(--water-top);
+            left: var(--water-left);
+        }
+
+        .item-strawberry {
+            top: var(--strawberry-top);
+            left: var(--strawberry-left);
+        }
+
+        /* Logotipo, esquina inferior derecha, tamaÃ±o moderado y responsivo */
+        .brand-logo {
+            position: absolute;
+            right: 2vw;
+            bottom: 2vh;
+            width: clamp(40px, 5vw, 85px);
+            height: auto;
+            max-width: none;
+            image-rendering: high-quality;
+            -webkit-user-drag: none;
+            pointer-events: auto; /* Modificado: Habilitado para permitir clics y hover */
+            cursor: pointer; /* AÃ±adido: Cursor de mano */
+            z-index: 20;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+            transition: transform 0.3s ease; /* AÃ±adido: TransiciÃ³n suave */
+        }
+
+        /* AÃ±adido: Efecto de aumento al pasar el cursor */
+        .brand-logo:hover {
+            transform: scale(1.1);
+        }
+
+        /* Nubes: contenedor mÃ¡s angosto en altura para que queden mÃ¡s arriba */
+        .clouds-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 24vh; /* antes 32vh: ahora aÃºn mÃ¡s arriba */
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .cloud-wrapper {
+            position: absolute;
+            top: var(--start-y);
+            left: -30vw; /* Inicia fuera de la pantalla a la izquierda */
+            will-change: transform;
+            animation: moveX var(--duration-x) linear infinite;
+            animation-delay: var(--delay);
+        }
+
+        .cloud-inner {
+            will-change: transform;
+            /* OscilaciÃ³n vertical sÃºper sutil de la nube */
+            animation: floatY var(--duration-y) ease-in-out infinite alternate;
+            animation-delay: var(--delay);
+        }
+
+        .cloud-inner img {
+            width: auto;
+            height: auto;
+            max-width: none;
+            opacity: var(--cloud-opacity);
+            image-rendering: high-quality;
+            /* Reducidas para dar sensaciÃ³n de mayor profundidad/realismo */
+            transform: scale(var(--cloud-scale));
+            transform-origin: center;
+        }
+
+        .butterflies-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5; /* DetrÃ¡s del personaje, delante de algunas nubes */
+        }
+
+        .butterfly-wrapper {
+            position: absolute;
+            top: var(--start-y);
+            will-change: transform;
+            /* La direcciÃ³n es controlada por --dir. Se quita 'infinite' para controlarlo con JS y evitar tirones */
+            animation: moveX var(--duration-x) linear;
+            animation-delay: var(--delay);
+            backface-visibility: hidden; /* AceleraciÃ³n por hardware para movimientos perfectos */
+        }
+
+        .butterfly-inner {
+            will-change: transform;
+            /* VariaciÃ³n de altura orgÃ¡nica mÃ¡s sutil para evitar invasiÃ³n de carriles */
+            animation: waveY var(--duration-y) ease-in-out infinite alternate;
+            animation-delay: calc(var(--delay) * -0.5);
+            backface-visibility: hidden;
+        }
+
+        /*
+           Se elimina el "aleteo" simulado con scaleX (CSS). El webp de la
+           mariposa ya trae su propia animaciÃ³n nativa de aleteo.
+        */
+        .butterfly {
+            width: auto;
+            height: auto;
+            max-width: none;
+            image-rendering: high-quality;
+            will-change: transform;
+            transform: scale(var(--bfly-scale, 1)) scaleX(var(--facing, 1));
+            transform-origin: center;
+            backface-visibility: hidden;
+        }
+
+        /* Movimiento horizontal compartido, ampliado a 150vw para garantizar salida limpia de bordes */
+        @keyframes moveX {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(calc(var(--dir, 1) * 150vw), 0, 0); }
+        }
+
+        /* OscilaciÃ³n sutil para nubes */
+        @keyframes floatY {
+            0% { transform: translate3d(0, -8px, 0); }
+            100% { transform: translate3d(0, 8px, 0); }
+        }
+
+        /* Trayectoria ondulada orgÃ¡nica y ESTRICTA para mariposas (no mÃ¡s empalmes) */
+        @keyframes waveY {
+            0% { transform: translate3d(0, -18px, 0); }
+            100% { transform: translate3d(0, 18px, 0); }
+        }
+
+        /* Ajustes menores para dispositivos mÃ³viles sin alterar proporciones */
+        @media (max-width: 768px) {
+            .item-sleep, .item-diadema, .item-water, .item-strawberry {
+                transform: scale(0.85);
+                transform-origin: top left;
+            }
+        }
+    </style>
+    
+    <script>
+        /* =========================================================
+           REFUERZO RESPONSIVO CROSS-BROWSER
+           Safari iOS (y Chrome/Firefox en Android) cambian la altura
+           real del viewport cuando aparece/desaparece la barra de
+           direcciones. 100vh/100dvh no siempre es fiable en todos los
+           navegadores, asÃ­ que calculamos la altura real con JS como
+           tercera capa de seguridad (usada en el CSS como
+           calc(var(--vh, 1vh) * 100)).
+        ========================================================= */
+        function setRealViewportHeight() {
+            const vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+        setRealViewportHeight();
+        window.addEventListener('resize', setRealViewportHeight);
+        window.addEventListener('orientationchange', setRealViewportHeight);
+        // pageshow cubre el caso de volver desde el historial en Safari (bfcache)
+        window.addEventListener('pageshow', setRealViewportHeight);
+
+        /* =========================================================
+           BLOQUEO DE F12 / DEVTOOLS / CONSOLA
+           Aviso honesto: esto es una barrera disuasoria del lado del
+           cliente. NingÃºn mÃ©todo en JavaScript puede impedir al 100%
+           que alguien abra las herramientas de desarrollador de su
+           propio navegador (es una decisiÃ³n que el navegador reserva
+           al usuario). Lo de abajo bloquea los atajos y el menÃº
+           contextual mÃ¡s comunes, y dificulta dejar la consola abierta.
+        ========================================================= */
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        document.addEventListener('keydown', (e) => {
+            const key = e.key ? e.key.toUpperCase() : '';
+            const blockCombo =
+                key === 'F12' ||
+                (e.ctrlKey && e.shiftKey && ['I', 'J', 'C', 'K'].includes(key)) ||
+                (e.metaKey && e.altKey && ['I', 'J', 'C'].includes(key)) || // Safari en Mac
+                (e.ctrlKey && key === 'U'); // ver cÃ³digo fuente
+
+            if (blockCombo) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        });
+
+        // Dificulta mantener la consola abierta/inspeccionando el DOM
+        (function () {
+            setInterval(() => {
+                debugger;
+            }, 1000);
+        })();
+
+        // Limpia cualquier salida de consola que pudiera filtrar detalles internos
+        try {
+            const noop = () => {};
+            ['log', 'warn', 'error', 'info', 'debug', 'table', 'dir'].forEach((m) => {
+                console[m] = noop;
+            });
+        } catch (err) { /* silencioso */ }
+    </script>
+</head>
+<body>
+
+    <div class="scene">
+
+        <!-- Contenedor exclusivo para las nubes en la parte superior -->
+        <div id="clouds-container" class="clouds-container"></div>
+
+        <!-- Elementos dispersos en resoluciÃ³n nativa, segÃºn los recuadros indicados -->
+        <img src="https://raw.githubusercontent.com/eamxat/Leafy/refs/heads/main/sleep.webp" alt="Personaje dormido" class="scene-item item-sleep">
+        <img src="https://raw.githubusercontent.com/eamxat/Leafy/refs/heads/main/diadema.webp" alt="Diadema" class="scene-item item-diadema">
+        <img src="https://raw.githubusercontent.com/eamxat/Leafy/refs/heads/main/water.webp" alt="Agua" class="scene-item item-water">
+        <img src="https://raw.githubusercontent.com/eamxat/Leafy/refs/heads/main/strawberry.webp" alt="Smile fresa" class="scene-item item-strawberry">
+
+        <!-- Logotipo envuelto en un enlace hacia xat.com -->
+        <a href="https://xat.com" target="_blank" rel="noopener noreferrer">
+            <img src="https://raw.githubusercontent.com/eamxat/Images/4afc6514504cbe94483fef55564cf41a5c33aa86/xatlogo%20text2.svg" alt="Logotipo" class="brand-logo">
+        </a>
+
+        <!-- Contenedor general para mariposas -->
+        <div id="butterflies-container" class="butterflies-container"></div>
+
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+
+            // --- GENERACIÃ“N DE NUBES (sistema continuo) ---
+            // En vez de crear un lote fijo de nubes que se van agotando,
+            // se mantiene un "pool" que siempre repone una nube nueva en
+            // cuanto una termina su recorrido, evitando que el cielo se
+            // quede vacÃ­o en algÃºn momento.
+            const cloudsContainer = document.getElementById('clouds-container');
+            const cloudImages = [
+                'https://raw.githubusercontent.com/eamxat/Leafy/refs/heads/main/nube1.png',
+                'https://raw.githubusercontent.com/eamxat/Leafy/refs/heads/main/nube2.png',
+                'https://raw.githubusercontent.com/eamxat/Leafy/refs/heads/main/nube3.png'
+            ];
+
+            // MÃ¡s nubes simultÃ¡neas para que se vea mÃ¡s dinÃ¡mico (antes 3-5)
+            const CLOUD_POOL_SIZE = Math.floor(Math.random() * 3) + 6; // 6 a 8
+
+            function spawnCloud(isInitial) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'cloud-wrapper';
+
+                const inner = document.createElement('div');
+                inner.className = 'cloud-inner';
+
+                const img = document.createElement('img');
+                img.src = cloudImages[Math.floor(Math.random() * cloudImages.length)];
+                img.alt = "";
+
+                // MÃ¡s arriba: entre 0% y 9% de la franja superior de nubes
+                const startY = (Math.random() * 9);
+
+                // DuraciÃ³n mÃ¡s variada y algo mÃ¡s Ã¡gil para sentirse mÃ¡s dinÃ¡mico
+                const durationX = (Math.random() * 45) + 40; // 40 a 85s
+
+                // OscilaciÃ³n de flotaciÃ³n (8 a 15 segundos)
+                const durationY = (Math.random() * 7) + 8;
+
+                // Opacidad natural (70% - 95%)
+                const opacity = (Math.random() * 0.25) + 0.70;
+
+                // Ligeramente mÃ¡s pequeÃ±as para dar mÃ¡s profundidad/realismo
+                const scale = (Math.random() * 0.17) + 0.38; // entre 0.38 y 0.55
+
+                // Solo en la carga inicial usamos delay negativo para que el
+                // cielo aparezca ya poblado desde el primer segundo; las
+                // nubes que se van reponiendo despuÃ©s entran limpiamente
+                // desde fuera de cuadro.
+                const delay = isInitial ? (Math.random() * -durationX) : 0;
+
+                wrapper.style.setProperty('--start-y', `${startY}vh`);
+                wrapper.style.setProperty('--dir', 1);
+                wrapper.style.setProperty('--duration-x', `${durationX}s`);
+                wrapper.style.setProperty('--delay', `${delay}s`);
+                inner.style.setProperty('--duration-y', `${durationY}s`);
+                inner.style.setProperty('--cloud-opacity', opacity);
+                img.style.setProperty('--cloud-scale', scale);
+
+                // Una sola pasada (sin "infinite"): al terminar, se elimina
+                // y se repone inmediatamente con una nube nueva, manteniendo
+                // siempre el mismo nÃºmero de nubes en pantalla.
+                wrapper.style.animationIterationCount = '1';
+                wrapper.style.animationFillMode = 'forwards';
+
+                wrapper.addEventListener('animationend', () => {
+                    wrapper.remove();
+                    spawnCloud(false);
+                });
+
+                inner.appendChild(img);
+                wrapper.appendChild(inner);
+                cloudsContainer.appendChild(wrapper);
+            }
+
+            for (let i = 0; i < CLOUD_POOL_SIZE; i++) {
+                spawnCloud(true);
+            }
+
+            // --- GENERACIÃ“N DE MARIPOSAS (Sistema de Carriles Anti-Empalme) ---
+            const butterfliesContainer = document.getElementById('butterflies-container');
+            const butterflyUrl = 'https://raw.githubusercontent.com/eamxat/Leafy/refs/heads/main/butterfly.webp';
+
+            // 6 carriles de vuelo fijos distribuidos verticalmente.
+            // Al asignar exactamente 1 mariposa por carril, garantizamos que NUNCA se empalmen.
+            const lanes = [6, 14, 22, 30, 38, 46];
+
+            function spawnButterfly(laneIndex, isInitial) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'butterfly-wrapper';
+
+                const inner = document.createElement('div');
+                inner.className = 'butterfly-inner';
+
+                const img = document.createElement('img');
+                img.src = butterflyUrl;
+                img.className = 'butterfly';
+                img.alt = "";
+
+                // Altura estricta basada en el carril asignado
+                const startY = lanes[laneIndex];
+
+                // Velocidad mucho mÃ¡s lenta, suave y controlada (25 a 45 segundos)
+                const durationX = (Math.random() * 20) + 25;
+
+                // OndulaciÃ³n fluida (3 a 5.5 segundos)
+                const durationY = (Math.random() * 2.5) + 3;
+
+                // Desfase de inicio para que no salgan todas al mismo tiempo
+                const delay = isInitial ? (Math.random() * -durationX) : 0;
+
+                const goingRight = Math.random() < 0.5;
+                const dir = goingRight ? 1 : -1;
+
+                // Inician bien ocultas fuera de los bordes para una entrada natural
+                wrapper.style.left = goingRight ? '-20vw' : '110vw';
+
+                img.style.setProperty('--facing', goingRight ? 1 : -1);
+
+                // TamaÃ±o un poco mÃ¡s homogÃ©neo para no exceder los lÃ­mites fÃ­sicos del carril
+                const bflyScale = (Math.random() * 0.15) + 0.65;
+                img.style.setProperty('--bfly-scale', bflyScale);
+
+                wrapper.style.setProperty('--start-y', `${startY}vh`);
+                wrapper.style.setProperty('--dir', dir);
+                wrapper.style.setProperty('--duration-x', `${durationX}s`);
+                wrapper.style.setProperty('--delay', `${delay}s`);
+
+                inner.style.setProperty('--duration-y', `${durationY}s`);
+
+                // EjecuciÃ³n de 1 sola pasada. Se elimina el ciclo infinito de CSS
+                // para que JS recicle el elemento, lo que soluciona por completo los "jalones".
+                wrapper.style.animationIterationCount = '1';
+                wrapper.style.animationFillMode = 'forwards';
+
+                wrapper.addEventListener('animationend', (e) => {
+                    // Garantiza que es el final del recorrido horizontal
+                    if (e.animationName === 'moveX') {
+                        wrapper.remove();
+                        spawnButterfly(laneIndex, false); // Nace una nueva en su mismo carril
+                    }
+                });
+
+                inner.appendChild(img);
+                wrapper.appendChild(inner);
+                butterfliesContainer.appendChild(wrapper);
+            }
+
+            // Iniciamos exactamente 1 mariposa por carril
+            for (let i = 0; i < lanes.length; i++) {
+                spawnButterfly(i, true);
+            }
+        });
+    </script>
+</body>
+</html>
