@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<title>Fantasy Sky Xat EAM96</title>
+<link rel="icon" type="image/png" href="https://raw.githubusercontent.com/eamxat/Images/refs/heads/main/favicon-16x16.png">
+<style>
+  :root {
+    /* TEMA 1: Noche Morada (FantasÃ­a) */
+    --bg-top: #1A0B2E;
+    --bg-mid: #3B1B54;
+    --bg-bot: #5D327C;
+    --cloud-dark: #4C4768;
+    --cloud-mid: #61597D;
+    --cloud-light: #9C8FD0;
+    --footer-glow: rgba(126, 92, 168, 0.4);
+    --moon-halo: rgba(255, 235, 150, 0.35);
+    --star-glow: rgba(255, 225, 130, 0.8);
+  }
+
+  [data-theme="1"] {
+    /* TEMA 2: Rosa Pastel (AlgodÃ³n de azÃºcar) */
+    --bg-top: #4A2545;
+    --bg-mid: #905581;
+    --bg-bot: #D499B9;
+    --cloud-dark: #875C74;
+    --cloud-mid: #C687A7;
+    --cloud-light: #F4C4D8;
+    --footer-glow: rgba(244, 196, 216, 0.6);
+  }
+
+  [data-theme="2"] {
+    /* TEMA 3: Peach Sunset (Atardecer durazno) */
+    --bg-top: #3D263B;
+    --bg-mid: #8C485A;
+    --bg-bot: #DF8076;
+    --cloud-dark: #81414D;
+    --cloud-mid: #C46C67;
+    --cloud-light: #F5A89B;
+    --footer-glow: rgba(245, 168, 155, 0.5);
+  }
+
+  [data-theme="3"] {
+    /* TEMA 4: Magenta MÃ­stico */
+    --bg-top: #2C0F35;
+    --bg-mid: #681C5C;
+    --bg-bot: #A22C74;
+    --cloud-dark: #521345;
+    --cloud-mid: #8B2065;
+    --cloud-light: #D1459F;
+    --footer-glow: rgba(209, 69, 159, 0.4);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    background: var(--bg-top);
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    transition: background 0.8s ease;
+  }
+
+  .scene {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 420px;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  /* Restaurado tu gradiente radial complejo original, combinando con los colores de tema */
+  .sky-gradient {
+    position: absolute; inset: 0; z-index: 0;
+    background: 
+      radial-gradient(circle at 78% 20%, rgba(255,247,225,.14), transparent 28%),
+      radial-gradient(circle at 70% 20%, rgba(255,255,255,.06), transparent 35%),
+      radial-gradient(circle at 20% 45%, rgba(170,140,255,.05), transparent 50%),
+      radial-gradient(circle at 55% 88%, rgba(216,217,240,.07), transparent 55%),
+      radial-gradient(circle at center, rgba(255,255,255,.03), transparent 70%),
+      linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 45%, var(--bg-bot) 100%);
+    transition: background 0.8s ease;
+  }
+
+  /* Restaurada tu ambient-glow original intacta */
+  .ambient-glow {
+    position: absolute; inset: 0; z-index: 2; pointer-events: none;
+    background: radial-gradient(ellipse 55% 38% at 76% 24%, rgba(255,247,225,.16), transparent 62%);
+    mix-blend-mode: screen;
+    animation: breathe 9s ease-in-out infinite;
+    will-change: opacity;
+  }
+  @keyframes breathe { 0%, 100% { opacity: .65 } 50% { opacity: 1 } }
+
+  .stars-layer { position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
+  
+  .star { 
+    position: absolute; 
+    color: #FFF3D6; 
+    will-change: transform, opacity; 
+    transform: translate3d(0,0,0); 
+  }
+  .star svg { width: 100%; height: 100%; display: block; fill: currentColor; transform-origin: 50% 50%; will-change: transform; }
+  .star.glow svg { filter: drop-shadow(0 0 3px currentColor) drop-shadow(0 0 8px var(--star-glow)); }
+
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  @keyframes spin-reverse { 0% { transform: rotate(0deg); } 100% { transform: rotate(-360deg); } }
+  @keyframes rise { 0% { transform: translate3d(0,0,0); } 100% { transform: translate3d(0,calc(-1 * var(--rise)),0); } }
+  @keyframes twinkle { 0%, 100% { opacity: var(--min-op,.25); } 50% { opacity: var(--max-op,1); } }
+
+  .cloud-footer {
+    position: absolute; left: 0; bottom: 0; width: 100%;
+    /* Bajamos las nubes para que no oculten tanto el cielo */
+    height: 25vh; 
+    min-height: 180px;
+    z-index: 4; pointer-events: none;
+  }
+  
+  .footer-glow-bg {
+    position: absolute; left: 0; bottom: 0; width: 100%; height: 50vh;
+    background: linear-gradient(0deg, var(--footer-glow) 0%, transparent 100%);
+    z-index: 5; pointer-events: none;
+    transition: background 0.8s ease;
+  }
+
+  .parallax-layer {
+    position: absolute; top: 0; left: 0; height: 100%; width: 200%;
+    display: flex; align-items: flex-start;
+    will-change: transform;
+    animation-name: conveyor;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+  @keyframes conveyor { 0% { transform: translate3d(0,0,0); } 100% { transform: translate3d(-50%,0,0); } }
+
+  .layer-group {
+    width: 50%; height: 100%; position: relative; flex: none;
+    /* Efecto de Nubes con olas suave */
+    animation: waves ease-in-out infinite;
+    will-change: transform;
+  }
+  @keyframes waves { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(12px); } }
+
+  .footer-back { animation-duration: 150s; filter: blur(0.5px); }
+  .footer-back .layer-group { animation-duration: 14s; }
+  
+  .footer-mid { animation-duration: 95s; }
+  .footer-mid .layer-group { animation-duration: 11s; animation-delay: -3s; }
+  
+  .footer-front { animation-duration: 60s; }
+  .footer-front .layer-group { animation-duration: 8s; animation-delay: -5s; }
+
+  .cloud-wrapper {
+    position: absolute;
+    transform: scale(var(--scale,1)) var(--flip,scaleX(1));
+    will-change: transform;
+  }
+
+  /* Base Cloud Styles (Compartido por todas las nubes) */
+  .css-cloud {
+    background: var(--puff-color);
+    border-radius: 100px; position: relative;
+    transition: background 0.8s ease, box-shadow 0.8s ease;
+  }
+  .css-cloud::before, .css-cloud::after {
+    content: ''; position: absolute; background: inherit; border-radius: 50%;
+    transition: background 0.8s ease, box-shadow 0.8s ease;
+  }
+  .cloud-shadow {
+    position: absolute; bottom: -12px; left: 16px;
+    height: 20px;
+    background: rgba(20, 15, 35, 0.18);
+    border-radius: 50%; filter: blur(6px);
+  }
+
+  /* Shape 1: Original ClÃ¡sica */
+  .shape-1 { width: 220px; height: 78px; }
+  .shape-1::before { width: 120px; height: 120px; top: -60px; left: 36px; }
+  .shape-1::after { width: 88px; height: 88px; top: -34px; right: 32px; }
+  .shape-1 .cloud-shadow { width: 190px; }
+
+  /* Shape 2: Alargada (Oleada de nubes para el fondo) */
+  .shape-2 { width: 380px; height: 78px; }
+  .shape-2::before { width: 130px; height: 130px; top: -65px; left: 45px; }
+  .shape-2::after { 
+    width: 100px; height: 100px; top: -40px; right: 40px; 
+    /* Esta sombra actÃºa como una 3ra burbuja perfectamente redonda en el centro */
+    box-shadow: -110px -20px 0 10px var(--puff-color); 
+  }
+  .shape-2 .cloud-shadow { width: 350px; }
+
+  /* Shape 3: Esponjosa y asimÃ©trica */
+  .shape-3 { width: 240px; height: 85px; }
+  .shape-3::before { width: 150px; height: 150px; top: -80px; left: 40px; }
+  .shape-3::after { width: 90px; height: 90px; top: -35px; right: 25px; }
+  .shape-3 .cloud-shadow { width: 210px; }
+
+  /* Restaurada tu luna original intacta con la nueva traslaciÃ³n solicitada (170px der, 15px abajo) */
+  .moon-wrap {
+    position: absolute; right: 13%; top: 9%; width: 12.5%;
+    aspect-ratio: 42.507/52.566; z-index: 8; pointer-events: none;
+    transform: translate(160px, 15px);
+  }
+  .moon-float {
+    position: absolute; inset: 0; animation: moonFloat 6s ease-in-out infinite; will-change: transform;
+  }
+  @keyframes moonFloat { 0%, 100% { transform: translateY(-6px); } 50% { transform: translateY(6px); } }
+  
+  .moon-halo {
+    position: absolute; inset: -70%; border-radius: 50%;
+    background: radial-gradient(circle, var(--moon-halo) 0%, rgba(255,235,150,.15) 38%, transparent 70%);
+    filter: blur(18px); z-index: -1;
+    animation: haloBreathe 6s ease-in-out infinite; will-change: transform, opacity;
+  }
+  @keyframes haloBreathe { 0%, 100% { opacity: .75; transform: scale(1); } 50% { opacity: 1; transform: scale(1.1); } }
+  
+  .moon-svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .moon-body { 
+    fill: #FDF3E4; 
+    filter: drop-shadow(0 0 6px rgba(255,235,150,.7)) drop-shadow(0 0 15px rgba(255,225,140,.5)) drop-shadow(0 0 30px rgba(255,210,120,.3)); 
+  }
+  .moon-crater { fill: #F0DAC6; opacity: .55; }
+
+  .theme-btn {
+    position: absolute; top: 65px; left: 20px; z-index: 10;
+    background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 50%;
+    width: 46px; height: 46px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    touch-action: manipulation;
+  }
+  .theme-btn:hover { background: rgba(255, 255, 255, 0.25); transform: scale(1.05); }
+  .theme-btn svg { width: 22px; height: 22px; fill: #FFF; }
+
+  /* Logotipo de xat reducido ligeramente en tamaÃ±o (de 80px a 70px) */
+  .xat-logo {
+    position: absolute; bottom: 20px; right: 20px; z-index: 10;
+    width: 70px; display: block; cursor: pointer; transition: all 0.3s ease;
+    touch-action: manipulation;
+  }
+  .xat-logo img { width: 100%; height: auto; display: block; transition: all 0.3s ease; }
+  .xat-logo:hover img { filter: drop-shadow(0 0 10px rgba(255,255,255,0.7)); transform: scale(1.05); }
+
+  @media (max-width: 820px) {
+    .moon-wrap { width: 17%; top: 8%; right: 10%; transform: translate(45px, 10px); }
+  }
+  @media (max-width: 768px) {
+    .cloud-wrapper { transform: scale(calc(var(--scale,1) * .65)) var(--flip,scaleX(1)); }
+  }
+  @media (max-width: 520px) {
+    .moon-wrap { width: 22%; top: 7%; right: 8%; transform: translate(20px, 8px); }
+    .theme-btn { left: 15px; width: 40px; height: 40px; }
+    .theme-btn svg { width: 18px; height: 18px; }
+    /* Logotipo ligeramente mÃ¡s pequeÃ±o tambiÃ©n en mÃ³viles (de 65px a 55px) */
+    .xat-logo { bottom: 15px; right: 15px; width: 55px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .parallax-layer, .layer-group, .cloud-wrapper, .moon-float, .moon-halo, .ambient-glow, .star { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<button class="theme-btn" id="themeBtn" aria-label="Cambiar paleta de colores">
+  <svg viewBox="0 0 24 24">
+    <circle id="themeBtnCircle" cx="12" cy="12" r="9" />
+  </svg>
+</button>
+
+<a href="https://xat.com" target="_blank" rel="noopener noreferrer" class="xat-logo">
+  <img src="https://raw.githubusercontent.com/eamxat/Images/4afc6514504cbe94483fef55564cf41a5c33aa86/xatlogo%20text2.svg" alt="xat">
+</a>
+
+<div class="scene" id="scene">
+  <div class="sky-gradient"></div>
+  <div class="stars-layer" id="starsLayer"></div>
+  <div class="ambient-glow"></div>
+  <div class="footer-glow-bg"></div>
+
+  <div class="moon-wrap" id="moonWrap">
+    <div class="moon-float">
+      <div class="moon-halo"></div>
+      <svg class="moon-svg" viewBox="0 0 42.507 52.566" aria-hidden="true">
+        <path class="moon-body" d="M14.446 0.105c3.917,-0.343 7.913,0.151 11.605,1.518 3.071,1.211 5.939,2.955 8.367,5.198 4.065,3.773 6.827,8.928 7.685,14.411 0.7,3.72 0.482,7.599 -0.585,11.229 -1.02,3.472 -2.659,6.781 -4.932,9.605 -1.557,1.874 -3.286,3.626 -5.287,5.027 -2.804,1.955 -5.945,3.418 -9.236,4.342 -3.438,0.91 -7.018,1.252 -10.567,1.093 -3.252,-0.105 -6.493,-0.732 -9.515,-1.943 -0.676,-0.3 -1.377,-0.562 -1.981,-0.994 3.657,-0.127 7.352,-0.525 10.819,-1.76 2.644,-0.995 5.134,-2.45 7.223,-4.361 1.906,-1.738 3.419,-3.87 4.637,-6.134 1.882,-3.554 2.995,-7.508 3.27,-11.518 0.302,-6.316 -1.768,-12.783 -5.898,-17.599 -2.017,-2.407 -4.821,-4.207 -7.928,-4.785 -2.207,-0.531 -4.488,-0.401 -6.729,-0.233 2.557,-2.041 5.848,-2.848 9.052,-3.096zm7.09 3.54l0 0c-0.396,0.093 -0.799,0.427 -0.735,0.872 0.054,0.911 0.864,1.479 1.583,1.896 0.65,0.359 1.372,0.75 2.141,0.644 0.614,-0.097 0.999,-0.785 0.812,-1.367 -0.241,-0.834 -0.964,-1.444 -1.747,-1.755 -0.645,-0.249 -1.365,-0.482 -2.054,-0.29zm6.411 3.616l0 0c-0.297,0.113 -0.6,0.373 -0.541,0.725 0.118,0.898 1.554,1.153 2.001,0.393 0.285,-0.815 -0.787,-1.408 -1.46,-1.118zm-0.364 5.715l0 0c-0.574,0.148 -1.03,0.637 -1.113,1.228 -0.228,1.344 0.213,2.724 0.897,3.875 0.658,1.08 1.891,1.984 3.215,1.742 1.087,-0.205 1.767,-1.305 1.786,-2.358 0.028,-1.619 -0.897,-3.193 -2.267,-4.037 -0.733,-0.476 -1.666,-0.671 -2.518,-0.45zm7.568 7.077l0 0c-1.109,0.316 -1.967,1.192 -2.542,2.161 -0.89,1.662 -1.031,3.687 -0.434,5.471 0.392,1.258 1.174,2.433 2.313,3.127 0.96,0.601 2.23,0.598 3.232,0.097 0.933,-0.539 1.613,-1.451 1.973,-2.456 0.578,-1.625 0.702,-3.447 0.144,-5.096 -0.313,-1.161 -1.014,-2.231 -2.009,-2.916 -0.774,-0.53 -1.786,-0.632 -2.677,-0.388zm-8.195 10.456l0 0c-0.439,0.161 -0.671,0.619 -0.794,1.042 -0.257,1.108 0.013,2.495 1.061,3.11 0.516,0.324 1.197,0.051 1.519,-0.421 0.529,-0.754 0.563,-1.807 0.177,-2.632 -0.332,-0.711 -1.133,-1.416 -1.963,-1.099zm-2.288 7.208l0 0c-0.618,0.456 -0.781,1.561 -0.164,2.08 0.995,0.532 2.251,-0.655 1.887,-1.693 -0.237,-0.68 -1.195,-0.783 -1.723,-0.387z"/>
+        <path class="moon-crater" d="M26.925 37.917c0.256,0.733 -0.028,1.528 -0.586,2.039 -0.572,0.524 -1.396,0.716 -2.101,0.339l-0.053 -0.028 -0.045 -0.038c-0.899,-0.756 -0.714,-2.293 0.191,-2.965 0.833,-0.619 2.227,-0.395 2.594,0.653zm13.453 -14.724c0.592,1.763 0.467,3.712 -0.153,5.45 -0.404,1.133 -1.173,2.149 -2.222,2.755l-0.015 0.009 -0.015 0.007c-1.176,0.588 -2.653,0.575 -3.781,-0.121 -1.252,-0.772 -2.124,-2.049 -2.554,-3.434 -0.645,-1.925 -0.491,-4.112 0.473,-5.912l0.006 -0.01 0.006 -0.011c0.651,-1.098 1.619,-2.065 2.876,-2.417 1.053,-0.294 2.238,-0.159 3.149,0.466 1.102,0.757 1.88,1.934 2.23,3.218zm-14.466 -9.076c0.118,-0.813 0.737,-1.483 1.53,-1.688 1.005,-0.26 2.102,-0.038 2.961,0.52 1.533,0.943 2.563,2.706 2.53,4.524 -0.023,1.324 -0.892,2.652 -2.248,2.903 -1.56,0.29 -3.024,-0.713 -3.802,-2.006 -0.76,-1.262 -1.219,-2.775 -0.971,-4.253zm0.935 -6.048c-0.098,-0.621 0.341,-1.119 0.887,-1.332 1.122,-0.471 2.655,0.543 2.206,1.829l-0.018 0.052 -0.028 0.048c-0.718,1.22 -2.851,0.823 -3.047,-0.597zm-6.609 -3.497c-0.089,-0.725 0.486,-1.312 1.157,-1.474 0.821,-0.225 1.635,0.01 2.402,0.311 0.949,0.372 1.789,1.116 2.081,2.116 0.285,0.909 -0.314,1.94 -1.265,2.09l-0.01 0.001c-0.919,0.127 -1.716,-0.28 -2.492,-0.708l-0.011 -0.006c-0.897,-0.521 -1.785,-1.209 -1.862,-2.33zm6.692 30.572c-1.26,-0.745 -1.632,-2.37 -1.318,-3.721l0.003 -0.015 0.005 -0.015c0.175,-0.604 0.521,-1.18 1.137,-1.412 1.119,-0.422 2.212,0.401 2.674,1.387 0.472,1.008 0.416,2.272 -0.225,3.195 -0.496,0.715 -1.5,1.063 -2.276,0.581z"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="cloud-footer" id="cloudFooter">
+    <div class="parallax-layer footer-back" id="footerBack"></div>
+    <div class="parallax-layer footer-mid" id="footerMid"></div>
+    <div class="parallax-layer footer-front" id="footerFront"></div>
+  </div>
+</div>
+
+<template id="tpl-star"><svg viewBox="0 0 54.532 52.204"><path d="M54.362 19.686c-0.409,-1.259 -1.498,-2.177 -2.808,-2.367l-14.627 -2.126 -6.542 -13.254c-0.586,-1.187 -1.795,-1.939 -3.119,-1.939 -1.324,0 -2.533,0.752 -3.119,1.939l-6.542 13.254 -14.627 2.126c-1.31,0.19 -2.399,1.108 -2.808,2.367 -0.409,1.26 -0.068,2.642 0.881,3.566l10.584 10.317 -2.499 14.568c-0.224,1.305 0.313,2.624 1.384,3.402 1.071,0.778 2.491,0.881 3.663,0.265l13.083 -6.878 13.083 6.878c0.509,0.268 1.064,0.4 1.618,0.4 0.721,0 1.439,-0.224 2.045,-0.665 1.071,-0.778 1.608,-2.097 1.384,-3.402l-2.499 -14.568 10.584 -10.317c0.949,-0.924 1.29,-2.307 0.881,-3.566z"/></svg></template>
+
+<script>
+(function(){
+  "use strict";
+
+  // BotÃ³n mÃ¡gico de temas
+  const btn = document.getElementById("themeBtn");
+  const btnCircle = document.getElementById("themeBtnCircle");
+  const themeColors = ["#5D327C", "#D499B9", "#DF8076", "#A22C74"];
+  let currentTheme = 0;
+  function updateThemeBtnColor(){
+    btnCircle.setAttribute("fill", themeColors[currentTheme]);
+  }
+  updateThemeBtnColor();
+  btn.addEventListener("click", () => {
+    currentTheme = (currentTheme + 1) % 4;
+    document.documentElement.setAttribute("data-theme", currentTheme);
+    updateThemeBtnColor();
+  });
+
+  function rand(min, max){ return Math.random() * (max - min) + min; }
+
+  // LÃ³gica de posicionamiento con selector dinÃ¡mico de formas (Shapes)
+  function buildCloudLayer(layerId, count, opts){
+    const layerEl = document.getElementById(layerId);
+    const group = document.createElement("div");
+    group.className = "layer-group";
+
+    for (let i = 0; i < count; i++){
+      const wrapper = document.createElement("div");
+      wrapper.className = "cloud-wrapper";
+
+      const scale = rand(opts.minScale, opts.maxScale);
+      wrapper.style.setProperty("--scale", scale.toFixed(2));
+      wrapper.style.setProperty("--flip", Math.random() > .5 ? "scaleX(-1)" : "scaleX(1)");
+      
+      wrapper.style.left = rand(-5, 100) + "%";
+      wrapper.style.top = rand(opts.topMin, opts.topMax) + "%";
+
+      const cloud = document.createElement("div");
+      
+      // Asignar forma al azar, favoreciendo nubes alargadas en la capa de atrÃ¡s
+      let shapeClass = "shape-1";
+      if (opts.isBack) {
+        const roll = Math.random();
+        if (roll < 0.65) shapeClass = "shape-2"; // 65% de probabilidad de ser muy larga
+        else if (roll < 0.85) shapeClass = "shape-3";
+        else shapeClass = "shape-1";
+      } else {
+        const roll = Math.random();
+        if (roll < 0.5) shapeClass = "shape-1";
+        else if (roll < 0.75) shapeClass = "shape-3";
+        else shapeClass = "shape-2";
+      }
+
+      cloud.className = "css-cloud " + shapeClass;
+      cloud.style.setProperty("--puff-color", `var(${opts.varColor})`);
+
+      const shadow = document.createElement("div");
+      shadow.className = "cloud-shadow";
+
+      cloud.appendChild(shadow);
+      wrapper.appendChild(cloud);
+      group.appendChild(wrapper);
+    }
+
+    layerEl.appendChild(group);
+    layerEl.appendChild(group.cloneNode(true)); // seamless loop
+  }
+
+  // Generamos las capas indicando que footerBack debe usar formas largas (isBack: true)
+  buildCloudLayer("footerBack", 12, {
+    minScale:.85, maxScale:1.15, varColor:"--cloud-dark",
+    topMin:0, topMax:30, isBack: true
+  });
+  buildCloudLayer("footerMid", 8, {
+    minScale:.65, maxScale:1.0, varColor:"--cloud-mid",
+    topMin:20, topMax:55, isBack: false
+  });
+  // Capa frontal con mÃ¡s nubes (10) y mayor escala mÃ­nima para cubrir los huecos
+  buildCloudLayer("footerFront", 10, {
+    minScale:1.25, maxScale:1.7, varColor:"--cloud-light",
+    topMin:45, topMax:75, isBack: false
+  });
+
+  const starsLayer = document.getElementById("starsLayer");
+  
+  // Condicional para que no de lag en celulares
+  const isMobile = window.innerWidth < 768;
+  const STAR_COUNT = isMobile ? 220 : 650;
+  
+  const starFrag = document.createDocumentFragment();
+
+  for (let i = 0; i < STAR_COUNT; i++){
+    const tpl = document.getElementById("tpl-star").content.cloneNode(true);
+    const el = document.createElement("div");
+    el.className = "star" + (Math.random() < 0.16 ? " glow" : "");
+    
+    // TamaÃ±os de estrella variados (incluyendo unas mÃ¡s grandes)
+    const sizeRoll = Math.random();
+    let size = rand(3, 8.5); // tamaÃ±o normal
+    if (sizeRoll < 0.12) size = rand(8.5, 14); // tamaÃ±o mediano
+    if (sizeRoll < 0.03) size = rand(14, 24); // gigantes
+    
+    el.style.width = size + "px";
+    el.style.height = size + "px";
+    el.style.left = rand(0, 100) + "%";
+    
+    const startVh = rand(105, 175);
+    el.style.top = startVh + "vh";
+    el.style.setProperty("--rise", (startVh + 130) + "vh");
+    
+    const riseDur = rand(30, 75);
+    const riseDelay = -rand(0, riseDur);
+    const twinkleDur = rand(2, 5);
+    const twinkleDelay = -rand(0, twinkleDur);
+    
+    el.style.setProperty("--min-op", rand(.15, .4).toFixed(2));
+    el.style.setProperty("--max-op", rand(.7, 1).toFixed(2));
+    
+    el.style.animation =
+      "rise " + riseDur + "s linear " + riseDelay + "s infinite, " +
+      "twinkle " + twinkleDur + "s ease-in-out " + twinkleDelay + "s infinite";
+      
+    el.appendChild(tpl);
+
+    const svgEl = el.querySelector("svg");
+    const spinDur = rand(4, 16);
+    const spinDelay = -rand(0, spinDur);
+    const spinName = Math.random() < 0.5 ? "spin" : "spin-reverse";
+    svgEl.style.animation = spinName + " " + spinDur + "s linear " + spinDelay + "s infinite";
+
+    starFrag.appendChild(el);
+  }
+  
+  starsLayer.appendChild(starFrag);
+})();
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  // Bloquear clic derecho
+  document.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+
+  // Bloquear teclas comunes para abrir DevTools / ver cÃ³digo
+  document.addEventListener("keydown", function(e){
+    const key = e.key ? e.key.toUpperCase() : "";
+    const blockedCombo =
+      key === "F12" ||
+      (e.ctrlKey && e.shiftKey && (key === "I" || key === "J" || key === "C")) ||
+      (e.metaKey && e.altKey && (key === "I" || key === "J" || key === "C")) || // Mac
+      (e.ctrlKey && (key === "U" || key === "S")) ||
+      (e.metaKey && (key === "U" || key === "S"));
+
+    if (blockedCombo){
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  });
+
+  // Detectar dispositivos tÃ¡ctiles/mÃ³viles para no aplicar ahÃ­ las
+  // comprobaciones que dependen de outerWidth/innerHeight, ya que en
+  // iOS y Android esos valores cambian solos (barra de direcciones,
+  // teclado, rotaciÃ³n) y disparaban falsos positivos que rompÃ­an la pÃ¡gina.
+  const isTouchDevice = (('ontouchstart' in window) || navigator.maxTouchPoints > 0) &&
+    /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+  // Deteccion de DevTools abierto (por diferencia de tamaÃ±o de ventana)
+  const threshold = 160;
+  function checkDevTools(){
+    if (isTouchDevice) return;
+    const widthDiff = window.outerWidth - window.innerWidth;
+    const heightDiff = window.outerHeight - window.innerHeight;
+    if (widthDiff > threshold || heightDiff > threshold){
+      document.body.innerHTML = "";
+      document.title = "Acceso restringido";
+    }
+  }
+  setInterval(checkDevTools, 1000);
+
+  // Deteccion adicional via consola (trampa de tiempo con debugger)
+  setInterval(function(){
+    if (isTouchDevice) return;
+    const start = performance.now();
+    debugger;
+    const diff = performance.now() - start;
+    if (diff > 100){
+      document.body.innerHTML = "";
+      document.title = "Acceso restringido";
+    }
+  }, 1500);
+})();
+</script>
+</body>
+</html>
