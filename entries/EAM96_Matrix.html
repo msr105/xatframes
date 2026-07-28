@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Xat Matrix Frame</title>
+<link rel="icon" type="image/png" href="https://raw.githubusercontent.com/eamxat/Images/refs/heads/main/favicon-16x16.png">
+<link rel="shortcut icon" type="image/png" href="https://raw.githubusercontent.com/eamxat/Images/refs/heads/main/favicon-16x16.png">
+<style>
+/* ==========================================
+ * VARIABLES Y DISEÑO BASE
+ * ========================================== */
+:root {
+    --bg-top: #020417;
+    --bg-bottom: #102B6E;
+    --vignette-color: #020417;
+    --glow-color: #6FE3FF;
+    --header-padding: 65px; /* Espacio para el banner superior invisible */
+}
+ 
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    /* Padding superior solicitado: genera el espacio sin bloque visual */
+    padding-top: var(--header-padding);
+    box-sizing: border-box;
+    background: linear-gradient(to bottom, var(--bg-top) 0%, var(--bg-bottom) 100%);
+    overflow: hidden;
+    font-family: 'Courier New', Consolas, monospace;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+ 
+/* Lienzo principal: Comienza desde el borde real (top: 0) para no cortar el efecto */
+canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+ 
+/* ==========================================
+ * EFECTOS CINEMATOGRÁFICOS Y UI (OVERLAYS)
+ * ========================================== */
+ 
+/* Los efectos visuales ignoran el padding para cubrir toda la pantalla */
+.vignette {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: radial-gradient(circle at 50% 50%, transparent 20%, var(--vignette-color) 150%);
+    z-index: 10;
+    pointer-events: none;
+}
+ 
+.scanlines {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.2) 50%);
+    background-size: 100% 4px;
+    z-index: 11;
+    pointer-events: none;
+    opacity: 0.6;
+}
+ 
+/* ==========================================
+ * UI ADICIONAL (LOGO Y SWITCHER)
+ * ========================================== */
+ 
+/* Logo SVG flotante inferior derecho */
+.logo-link {
+    position: fixed;
+    bottom: 30px;
+    right: 25px;
+    z-index: 100;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    filter: drop-shadow(0 0 10px var(--glow-color));
+    opacity: 0.8;
+    cursor: pointer;
+}
+ 
+.logo-link:hover {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 25px var(--glow-color));
+    opacity: 1;
+}
+ 
+.logo-link img {
+    height: 32px;
+    width: auto;
+}
+ 
+/* Selector de Temas: Empujado hacia abajo por el padding superior */
+.theme-switcher {
+    position: fixed;
+    top: calc(var(--header-padding) + 19px);
+    right: 25px;
+    z-index: 101;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+ 
+#theme-toggle-btn {
+    width: 29px;
+    height: 29px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: all 0.4s ease;
+    background: var(--glow-color);
+    box-shadow: 0 0 15px var(--glow-color);
+    outline: none;
+    padding: 0;
+    position: relative;
+}
+ 
+#theme-toggle-btn:active {
+    transform: scale(0.9);
+}
+ 
+#theme-toggle-btn::after {
+    content: '';
+    position: absolute;
+    top: -5px; left: -5px; right: -5px; bottom: -5px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    animation: pulse 2s infinite;
+}
+ 
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(1.5); opacity: 0; }
+}
+ 
+/* Optimización para Móviles */
+@media (max-width: 768px) {
+    :root { --header-padding: 50px; }
+    .logo-link img { height: 35px; }
+    #theme-toggle-btn { width: 38px; height: 38px; }
+}
+</style>
+</head>
+<body>
+ 
+    <!-- Capas de efectos superpuestas -->
+    <div class="vignette"></div>
+    <div class="scanlines"></div>
+ 
+    <!-- Selector de Temas (Círculo Único) -->
+    <div class="theme-switcher">
+        <button id="theme-toggle-btn" onclick="rotateTheme()" title="Cambiar color Matrix"></button>
+    </div>
+ 
+    <!-- Logo SVG con enlace -->
+    <a href="https://xat.com" target="_blank" class="logo-link">
+        <img src="https://raw.githubusercontent.com/eamxat/Images/4afc6514504cbe94483fef55564cf41a5c33aa86/xatlogo%20text2.svg" alt="xat logo">
+    </a>
+ 
+    <!-- Lienzo de renderizado Matrix -->
+    <canvas id="matrixCanvas"></canvas>
+ 
+<script>
+/**
+ * ==========================================
+ * CONFIGURACIÓN CORE Y VARIABLES
+ * ==========================================
+ */
+const canvas = document.getElementById('matrixCanvas');
+const ctx = canvas.getContext('2d');
+ 
+let width = window.innerWidth;
+let height = window.innerHeight;
+let columns = [];
+let bgGradient;
+let solidBg;
+ 
+const THEMES = {
+    blue: {
+        trail: '#1FA3C6', glow: '#6FE3FF', glitch: 'rgba(111, 227, 255, 0.9)', xatWord: '#FFFFFF', head: 'rgba(255, 255, 255, 0.8)',
+        bgTop: '#020417', bgBottom: '#102B6E', vignette: '#020417',
+        bgFadeTop: 'rgba(2, 4, 23, 0.08)', bgFadeBottom: 'rgba(16, 43, 110, 0.08)'
+    },
+    green: {
+        trail: '#00FF41', glow: '#8FFF8F', glitch: 'rgba(143, 255, 143, 0.9)', xatWord: '#FFFFFF', head: 'rgba(255, 255, 255, 0.8)',
+        bgTop: '#000B00', bgBottom: '#002B00', vignette: '#000B00',
+        bgFadeTop: 'rgba(0, 11, 0, 0.08)', bgFadeBottom: 'rgba(0, 43, 0, 0.08)'
+    },
+    yellow: {
+        trail: '#FFC107', glow: '#FFE082', glitch: 'rgba(255, 224, 130, 0.9)', xatWord: '#FFFFFF', head: 'rgba(255, 255, 255, 0.8)',
+        bgTop: '#0F0B00', bgBottom: '#332600', vignette: '#0F0B00',
+        bgFadeTop: 'rgba(15, 11, 0, 0.08)', bgFadeBottom: 'rgba(51, 38, 0, 0.08)'
+    },
+    purple: {
+        trail: '#B026FF', glow: '#E08FFF', glitch: 'rgba(224, 143, 255, 0.9)', xatWord: '#FFFFFF', head: 'rgba(255, 255, 255, 0.8)',
+        bgTop: '#0A0011', bgBottom: '#220033', vignette: '#0A0011',
+        bgFadeTop: 'rgba(10, 0, 17, 0.08)', bgFadeBottom: 'rgba(34, 0, 51, 0.08)'
+    }
+};
+ 
+/**
+ * Almacenamiento seguro: xat suele cargar este archivo dentro de un
+ * <iframe sandbox>, y ese sandbox frecuentemente BLOQUEA localStorage.
+ * Si accedemos a localStorage sin protección y lanza una excepción,
+ * todo el script se detiene ahí (nunca se llega a initMatrix/animate),
+ * lo que explica que no se vea el efecto ni funcione el botón.
+ * Este wrapper prueba localStorage y, si falla, usa una variable en
+ * memoria como respaldo, sin interrumpir la ejecución.
+ */
+const safeStorage = (function () {
+    let memoryFallback = {};
+    let storageWorks = false;
+    try {
+        const testKey = '__xatmatrix_test__';
+        window.localStorage.setItem(testKey, '1');
+        window.localStorage.removeItem(testKey);
+        storageWorks = true;
+    } catch (e) {
+        storageWorks = false;
+    }
+    return {
+        get(key) {
+            if (storageWorks) {
+                try { return window.localStorage.getItem(key); } catch (e) { /* ignore */ }
+            }
+            return Object.prototype.hasOwnProperty.call(memoryFallback, key) ? memoryFallback[key] : null;
+        },
+        set(key, value) {
+            if (storageWorks) {
+                try { window.localStorage.setItem(key, value); return; } catch (e) { /* fall through */ }
+            }
+            memoryFallback[key] = value;
+        }
+    };
+})();
+ 
+const themeOrder = ['blue', 'green', 'yellow', 'purple'];
+let currentTheme = safeStorage.get('matrixTheme') || 'blue';
+let activeColors = THEMES[currentTheme];
+ 
+function rotateTheme() {
+    let nextIndex = (themeOrder.indexOf(currentTheme) + 1) % themeOrder.length;
+    setTheme(themeOrder[nextIndex]);
+}
+ 
+function setTheme(themeName) {
+    currentTheme = themeName;
+    activeColors = THEMES[themeName];
+    safeStorage.set('matrixTheme', themeName);
+ 
+    document.documentElement.style.setProperty('--bg-top', activeColors.bgTop);
+    document.documentElement.style.setProperty('--bg-bottom', activeColors.bgBottom);
+    document.documentElement.style.setProperty('--vignette-color', activeColors.vignette);
+    document.documentElement.style.setProperty('--glow-color', activeColors.glow);
+ 
+    const btn = document.getElementById('theme-toggle-btn');
+    if (btn) {
+        btn.style.background = activeColors.trail;
+        btn.style.boxShadow = `0 0 15px ${activeColors.glow}`;
+    }
+ 
+    buildGradients();
+ 
+    if (ctx && isFinite(width) && isFinite(height)) {
+        ctx.fillStyle = solidBg;
+        ctx.fillRect(0, 0, width, height);
+    }
+}
+ 
+function buildGradients() {
+    const safeHeight = (isFinite(height) && height > 0) ? height : window.innerHeight;
+ 
+    bgGradient = ctx.createLinearGradient(0, 0, 0, safeHeight);
+    bgGradient.addColorStop(0, activeColors.bgFadeTop);
+    bgGradient.addColorStop(1, activeColors.bgFadeBottom);
+ 
+    solidBg = ctx.createLinearGradient(0, 0, 0, safeHeight);
+    solidBg.addColorStop(0, activeColors.bgTop);
+    solidBg.addColorStop(1, activeColors.bgBottom);
+}
+ 
+const CHARS = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789<>/-+=*#@';
+ 
+class Column {
+    constructor(x, fontSize) {
+        this.x = x;
+        this.fontSize = fontSize;
+        this.y = (Math.random() * 2 - 1) * height;
+        this.prevY = this.y;
+        const baseSpeed = this.fontSize * 0.15;
+        this.speed = baseSpeed + (Math.random() * baseSpeed * 0.5);
+        this.targetWord = "XAT.COM";
+        this.wordIndex = -1;
+        this.isHighlight = false;
+        this.text = this.getRandomChar();
+    }
+ 
+    getRandomChar() {
+        return CHARS.charAt(Math.floor(Math.random() * CHARS.length));
+    }
+ 
+    draw(ctx) {
+        this.y += this.speed;
+        let currentRow = Math.floor(this.y / this.fontSize);
+        let prevRow = Math.floor(this.prevY / this.fontSize);
+ 
+        if (currentRow > prevRow) {
+            ctx.font = `bold ${this.fontSize}px 'MS Gothic', monospace`;
+            ctx.textAlign = 'center';
+ 
+            if (this.isHighlight) {
+                ctx.fillStyle = activeColors.xatWord;
+                ctx.shadowColor = activeColors.glow;
+                ctx.shadowBlur = 15;
+            } else {
+                ctx.fillStyle = activeColors.trail;
+                ctx.shadowBlur = 0;
+            }
+            ctx.fillText(this.text, this.x, prevRow * this.fontSize);
+ 
+            if (this.wordIndex === -1 && Math.random() < 0.04 && prevRow > 5) {
+                let glitchRow = prevRow - Math.floor(Math.random() * 8);
+                ctx.fillStyle = activeColors.glitch;
+                ctx.shadowBlur = 0;
+                ctx.fillText(this.getRandomChar(), this.x, glitchRow * this.fontSize);
+            }
+ 
+            if (this.wordIndex >= 0 && this.wordIndex < this.targetWord.length) {
+                this.text = this.targetWord[this.wordIndex];
+                this.isHighlight = true;
+                this.wordIndex++;
+                if (this.wordIndex >= this.targetWord.length) this.wordIndex = -1;
+            } else {
+                this.text = this.getRandomChar();
+                this.isHighlight = false;
+                if (Math.random() < 0.002) this.wordIndex = 0;
+            }
+ 
+            ctx.fillStyle = activeColors.head;
+            ctx.shadowColor = activeColors.glow;
+            ctx.shadowBlur = 12;
+ 
+            if(Math.random() < 0.1 || this.isHighlight) {
+                ctx.fillStyle = '#FFFFFF';
+                ctx.shadowBlur = 20;
+            }
+ 
+            ctx.fillText(this.text, this.x, currentRow * this.fontSize);
+            this.prevY = this.y;
+        }
+ 
+        if (this.y > height + 100 && Math.random() > 0.95) {
+            this.y = 0;
+            this.prevY = 0;
+            this.wordIndex = -1;
+            this.isHighlight = false;
+        }
+    }
+}
+ 
+function initMatrix() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    columns = [];
+    buildGradients();
+ 
+    let currentX = 0;
+    while (currentX < width) {
+        let sizeCategory = Math.random();
+        let fontSize = sizeCategory < 0.2 ? 12 : (sizeCategory < 0.8 ? 18 : 26);
+        currentX += fontSize;
+        columns.push(new Column(currentX - (fontSize/2), fontSize));
+    }
+    columns.sort((a, b) => a.fontSize - b.fontSize);
+}
+ 
+function animate() {
+    if (bgGradient) {
+        ctx.fillStyle = bgGradient;
+        ctx.shadowBlur = 0;
+        ctx.fillRect(0, 0, width, height);
+    }
+ 
+    for (let i = 0; i < columns.length; i++) {
+        columns[i].draw(ctx);
+    }
+    requestAnimationFrame(animate);
+}
+ 
+window.addEventListener('resize', () => {
+    initMatrix();
+    ctx.fillStyle = solidBg;
+    ctx.fillRect(0, 0, width, height);
+});
+ 
+try {
+    initMatrix();
+    setTheme(currentTheme);
+    animate();
+} catch (err) {
+    console.error('Xat Matrix: error al iniciar la animación ->', err);
+}
+ 
+// ==========================================
+// PROTECCIÓN CONTRA CLICK DERECHO Y F12
+// ==========================================
+ 
+// Bloquear click derecho (menú contextual)
+document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+});
+ 
+// Bloquear atajos de teclado de herramientas de desarrollo
+document.addEventListener('keydown', function(e) {
+    // Bloquear F12
+    if (e.key === 'F12' || e.keyCode === 123) {
+        e.preventDefault();
+        return false;
+    }
+    // Bloquear Ctrl+Shift+I / Ctrl+Shift+J (DevTools y Consola)
+    if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) {
+        e.preventDefault();
+        return false;
+    }
+    // Bloquear Ctrl+U (Ver código fuente)
+    if (e.ctrlKey && (e.key === 'U' || e.key === 'u')) {
+        e.preventDefault();
+        return false;
+    }
+});
+</script>
+ 
+</body>
+</html>
